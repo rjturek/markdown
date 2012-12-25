@@ -1,0 +1,109 @@
+/*
+ * Taken from GitHub toddb/markdown.gradle - which was...
+ * Adapted from https://raw.github.com/geb/geb-seconf-2012-slides/master/buildSrc/pegdown/src/main/groovy/org/gradle/plugins/pegdown/PegDown.groovy
+ */ 
+
+apply plugin: 'base'
+
+buildscript {
+  repositories {
+    mavenCentral()
+  }
+ 
+  dependencies {
+    //classpath "org.pegdown:pegdown:1.1.0"
+    classpath "org.pegdown:pegdown:1.2.1"
+  }
+}
+ 
+class FileConcatTask extends SourceTask {
+   @Input @Optional byte[] joiner
+ 
+   private destination
+   @OutputFile File getDestination() { project.file(destination) }
+   void setDestination(destination) { this.destination = destination }
+ 
+   @TaskAction
+   void doFileConcat() {
+       getDestination().withOutputStream { out ->
+           getSource().files.sort { it.name }.each {
+               it.withInputStream { out << it }
+               if (joiner) {
+                   out << joiner
+               }
+           }
+       }
+   }
+}
+ 
+task concatMarkdown(type: FileConcatTask) {
+   source fileTree("docs") { include "*.md" }
+   destination "$buildDir/all.md"
+   joiner "\n\n".getBytes("UTF-8")
+}
+ 
+task markdown(type: PegDown) {
+   inputEncoding "utf-8"
+   outputEncoding "utf-8"
+   source concatMarkdown
+   destination "$buildDir/html/raw.html"
+}
+ 
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.Optional
+import org.gradle.api.tasks.SourceTask
+import org.gradle.api.tasks.OutputFile
+import org.gradle.api.tasks.TaskAction
+import org.pegdown.Extensions
+import org.gradle.api.InvalidUserDataException
+import org.pegdown.PegDownProcessor
+ 
+class PegDown extends SourceTask {
+ 
+    @Input
+    @Optional
+    List<String> options
+ 
+    @Input
+    String inputEncoding
+ 
+    @Input
+    String outputEncoding
+ 
+    private destination
+    
+    void setDestination(destination) {
+        this.destination = destination
+    }
+ 
+    @OutputFile
+    def getDestination() {
+        return project.file(destination)
+    }
+ 
+    @TaskAction
+    void process() {
+        int optionsValue = getCalculatedOptions()
+        PegDownProcessor processor = new PegDownProcessor(optionsValue)
+        String markdown = getSource().singleFile.getText(getInputEncoding())
+        String html = processor.markdownToHtml(markdown)
+        getDestination().write(html, getOutputEncoding())
+    }
+    
+    int getCalculatedOptions() {
+        getOptions().inject(0) { acc, val -> acc | toOptionValue(val) } as int
+    }
+    
+    protected int toOptionValue(String optionName) {
+        String upName = val.toUpperCase()
+        try {
+            Extensions."$upName"
+        } catch (MissingPropertyException e) {
+            throw new InvalidUserDataException("$optionName is not a valid PegDown extension name")
+        }
+    }
+    
+    void options(String... options) {
+        this.options.addAll(options)
+    }
+}
