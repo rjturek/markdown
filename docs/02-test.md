@@ -10,7 +10,8 @@ what to think
 > This is somw kind of block quote
 > If you know what I mean
 
-this is some source code
+this is some source code (don't forget the empty line after this line)
+
 	if a == b
 		bite me
 
@@ -22,4 +23,4 @@ This is List:
 
 this is a link to [google](http://google.com).    Do you see how cool?
 
-This is *bold* you know?
+This is *emphsized* - css to make it bold ?
